@@ -31,12 +31,12 @@ bookstore/
 
 ## ⚡ Features
 
-* ✅ CRUD operations for books
-* ✅ Persistent storage with PostgreSQL
-* ✅ Type-safe ORM using Drizzle
-* ✅ TypeScript for cleaner, safer development
-* ✅ Docker support for easy local setup
-* ✅ Environment variables for sensitive data
+*  CRUD operations for books
+*  Persistent storage with PostgreSQL
+*  Type-safe ORM using Drizzle
+*  TypeScript for cleaner, safer development
+*  Docker support for easy local setup
+*  Environment variables for sensitive data
 
 ---
 
