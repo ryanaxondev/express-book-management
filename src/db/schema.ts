@@ -6,6 +6,7 @@ export const books = pgTable("books", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   author: text("author").notNull(),
+  description: text("description"),
 });
 
 // Type helpers for controllers and routes

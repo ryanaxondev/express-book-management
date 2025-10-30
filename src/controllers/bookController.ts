@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 interface BookInput {
   title: string;
   author: string;
+  description?: string;
 }
 
 // Get all books
@@ -25,7 +26,7 @@ export const createBook = async (
   req: Request<{}, {}, BookInput>,
   res: Response
 ): Promise<void> => {
-  const { title, author } = req.body;
+  const { title, author, description } = req.body;
 
   if (!title || !author) {
     res.status(400).json({ error: "Title and author are required" });
@@ -33,7 +34,7 @@ export const createBook = async (
   }
 
   try {
-    const [newBook] = await db.insert(books).values({ title, author }).returning();
+    const [newBook] = await db.insert(books).values({ title, author, description }).returning();
     res.status(201).json(newBook);
   } catch (error) {
     console.error("Error creating book:", error);
@@ -47,12 +48,12 @@ export const updateBook = async (
   res: Response
 ): Promise<void> => {
   const { id } = req.params;
-  const { title, author } = req.body;
+  const { title, author, description } = req.body;
 
   try {
     const [updated] = await db
       .update(books)
-      .set({ title, author })
+      .set({ title, author, description })
       .where(eq(books.id, Number(id)))
       .returning();
 
