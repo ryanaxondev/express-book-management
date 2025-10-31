@@ -1,59 +1,146 @@
 import { Request, Response } from "express";
 import { db } from "../db/index.js";
-import { books } from "../db/schema.js";
+import { books, categories } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
-// Input type for creating or updating a book
-interface BookInput {
+// -----------------------------
+// Types
+// -----------------------------
+export interface BookInput {
   title: string;
   author: string;
   description?: string;
+  categoryId?: number | null;
 }
 
+export interface BookWithCategory {
+  id: number;
+  title: string;
+  author: string;
+  description: string | null;
+  categoryId: number | null;
+  category?: {
+    id: number;
+    name: string;
+    description?: string | null;
+  } | null;
+}
+
+// -----------------------------
+// Mapper Utility
+// -----------------------------
+const mapToBookWithCategory = (row: any): BookWithCategory => ({
+  id: row.books.id,
+  title: row.books.title,
+  author: row.books.author,
+  description: row.books.description,
+  categoryId: row.books.categoryId,
+  category: row.categories
+    ? {
+        id: row.categories.id,
+        name: row.categories.name,
+        description: row.categories.description,
+      }
+    : null,
+});
+
+// -----------------------------
 // Get all books
-export const getAllBooks = async (_req: Request, res: Response): Promise<void> => {
+// -----------------------------
+export const getAllBooks = async (
+  _req: Request,
+  res: Response<BookWithCategory[] | { error: string }>
+): Promise<void> => {
   try {
-    const allBooks = await db.select().from(books);
-    res.json(allBooks);
+    const results = await db
+      .select()
+      .from(books)
+      .leftJoin(categories, eq(books.categoryId, categories.id));
+
+    const mapped = results.map(mapToBookWithCategory);
+    res.status(200).json(mapped);
   } catch (error) {
     console.error("Error fetching books:", error);
     res.status(500).json({ error: "Failed to fetch books" });
   }
 };
 
-// Create a new book
-export const createBook = async (
-  req: Request<{}, {}, BookInput>,
-  res: Response
+// -----------------------------
+// Get single book by ID
+// -----------------------------
+export const getBookById = async (
+  req: Request<{ id: string }>,
+  res: Response<BookWithCategory | { error: string }>
 ): Promise<void> => {
-  const { title, author, description } = req.body;
-
-  if (!title || !author) {
-    res.status(400).json({ error: "Title and author are required" });
-    return;
-  }
+  const { id } = req.params;
 
   try {
-    const [newBook] = await db.insert(books).values({ title, author, description }).returning();
-    res.status(201).json(newBook);
+    const [result] = await db
+      .select()
+      .from(books)
+      .leftJoin(categories, eq(books.categoryId, categories.id))
+      .where(eq(books.id, Number(id)));
+
+    if (!result) {
+      res.status(404).json({ error: "Book not found" });
+      return;
+    }
+
+    res.json(mapToBookWithCategory(result));
+  } catch (error) {
+    console.error("Error fetching book:", error);
+    res.status(500).json({ error: "Failed to fetch book" });
+  }
+};
+
+// ----------------------------
+//  Create new book
+// ----------------------------
+export const createBook = async (req: Request, res: Response) => {
+  try {
+    const { title, author, categoryId } = req.body;
+
+    if (!title || !author || !categoryId) {
+      return res.status(400).json({ error: "title, author, and categoryId are required" });
+    }
+
+    const [category] = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, categoryId));
+
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+
+    const [newBook] = await db
+      .insert(books)
+      .values({ title, author, categoryId })
+      .returning();
+
+    const bookWithCategory = { ...newBook, category };
+
+    res.status(201).json(bookWithCategory);
   } catch (error) {
     console.error("Error creating book:", error);
     res.status(500).json({ error: "Failed to create book" });
   }
 };
 
-// Update an existing book
+// -----------------------------
+// Update book
+// -----------------------------
 export const updateBook = async (
   req: Request<{ id: string }, {}, Partial<BookInput>>,
-  res: Response
+  res: Response<BookWithCategory | { error: string }>
 ): Promise<void> => {
   const { id } = req.params;
-  const { title, author, description } = req.body;
+  const { title, author, description, categoryId } = req.body;
 
   try {
     const [updated] = await db
       .update(books)
-      .set({ title, author, description })
+      .set({ title, author, description, categoryId })
       .where(eq(books.id, Number(id)))
       .returning();
 
@@ -62,29 +149,48 @@ export const updateBook = async (
       return;
     }
 
-    res.json(updated);
+    // Refetch with category
+    const [joined] = await db
+      .select()
+      .from(books)
+      .leftJoin(categories, eq(books.categoryId, categories.id))
+      .where(eq(books.id, updated.id));
+
+    res.json(mapToBookWithCategory(joined));
   } catch (error) {
     console.error("Error updating book:", error);
     res.status(500).json({ error: "Failed to update book" });
   }
 };
 
-// Delete a book
+// -----------------------------
+// Delete book
+// -----------------------------
 export const deleteBook = async (
   req: Request<{ id: string }>,
-  res: Response
+  res: Response<{ message: string; book: BookWithCategory } | { error: string }>
 ): Promise<void> => {
   const { id } = req.params;
 
   try {
-    const deleted = await db.delete(books).where(eq(books.id, Number(id))).returning();
+    // Get book before deleting
+    const [existing] = await db
+      .select()
+      .from(books)
+      .leftJoin(categories, eq(books.categoryId, categories.id))
+      .where(eq(books.id, Number(id)));
 
-    if (!deleted.length) {
+    if (!existing) {
       res.status(404).json({ error: "Book not found" });
       return;
     }
 
-    res.json({ message: "Book deleted", book: deleted[0] });
+    await db.delete(books).where(eq(books.id, Number(id)));
+
+    res.json({
+      message: "Book deleted successfully",
+      book: mapToBookWithCategory(existing),
+    });
   } catch (error) {
     console.error("Error deleting book:", error);
     res.status(500).json({ error: "Failed to delete book" });

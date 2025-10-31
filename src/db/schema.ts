@@ -1,14 +1,33 @@
-import { pgTable, serial, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, integer } from "drizzle-orm/pg-core";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
-// Define the "books" table schema
+// -------------------------
+//  Categories Table
+// -------------------------
+export const categories = pgTable("categories", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+});
+
+// -------------------------
+//  Books Table
+// -------------------------
 export const books = pgTable("books", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   author: text("author").notNull(),
   description: text("description"),
+  categoryId: integer("category_id").references(() => categories.id, {
+    onDelete: "set null",
+  }),
 });
 
-// Type helpers for controllers and routes
-export type Book = InferSelectModel<typeof books>;   // Returned data type from DB
-export type NewBook = InferInsertModel<typeof books>; // Input data type for new records
+// -------------------------
+//  Type Inference Helpers
+// -------------------------
+export type Book = InferSelectModel<typeof books>;
+export type NewBook = InferInsertModel<typeof books>;
+
+export type Category = InferSelectModel<typeof categories>;
+export type NewCategory = InferInsertModel<typeof categories>;
