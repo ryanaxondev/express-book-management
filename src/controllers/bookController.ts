@@ -98,7 +98,7 @@ export const getBookById = async (
 // ----------------------------
 export const createBook = async (req: Request, res: Response) => {
   try {
-    const { title, author, categoryId } = req.body;
+    const { title, author, description, categoryId } = req.body;
 
     if (!title || !author || !categoryId) {
       return res.status(400).json({ error: "title, author, and categoryId are required" });
@@ -115,7 +115,7 @@ export const createBook = async (req: Request, res: Response) => {
 
     const [newBook] = await db
       .insert(books)
-      .values({ title, author, categoryId })
+      .values({ title, author, description, categoryId })
       .returning();
 
     const bookWithCategory = { ...newBook, category };
