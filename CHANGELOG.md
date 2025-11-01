@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Postman collection and environment files for API testing (`/docs/postman`) and README section explaining usage (commit 75d63f0)
 
 ### Changed
+- Updated Book Controller: added strict category validation on create/update (404 if categoryId does not exist)
+- Unified Book JSON responses to always return `BookWithCategory` structure (includes nested category object when available)
+- Update operations now safely validate and apply categoryId changes, supporting clearing category via `null`
+- Improved error messages for invalid categories or non-existing books
 - README updates (commit 86bdb6)
 
 ### Fixed

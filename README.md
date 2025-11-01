@@ -174,6 +174,17 @@ npm start
 
 ---
 
+## ✅ Enhancements in Book Controller (v2 Update)
+
+* Category validation added to `POST /books` and `PUT /books/:id`
+* If `categoryId` is present and does not exist → API returns `404: Category not found`
+* Books can still have **no category** (`categoryId: null` is allowed)
+* All book responses now return a **BookWithCategory** shape consistently (including category object when linked)
+* Update requests only apply `categoryId` changes when valid and support clearing it via `null`
+* Improved and explicit error messages for missing books or invalid categories
+
+---
+
 ## 🧩 Database Schema Overview
 
 ### Table: `books`
