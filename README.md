@@ -62,6 +62,7 @@ bookstore/
 │── .env
 │── .env.example
 │── .gitignore
+│── CHANGELOG.md
 ```
 
 ---
