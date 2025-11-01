@@ -133,13 +133,13 @@ npm start
 
 ### 📘 Books
 
-| Method | Endpoint     | Description             | Request Body Example                                            |
-| ------ | ------------ | ----------------------- | --------------------------------------------------------------- |
-| GET    | `/books`     | Get all books           | —                                                               |
-| GET    | `/books/:id` | Get a single book by ID | —                                                               |
-| POST   | `/books`     | Add a new book          | `{ "title": "Book A", "author": "John Doe", "categoryId": 1 }`  |
-| PUT    | `/books/:id` | Update book details     | `{ "title": "Updated", "author": "Jane Doe", "categoryId": 2 }` |
-| DELETE | `/books/:id` | Delete a book by ID     | —                                                               |
+| Method | Endpoint     | Description             | Request Body Example                                                                                             |
+| ------ | ------------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| GET    | `/books`     | Get all books           | —                                                                                                                |
+| GET    | `/books/:id` | Get a single book by ID | —                                                                                                                |
+| POST   | `/books`     | Add a new book          | `{ "title": "Book A", "author": "John Doe", "description": "A short description of the book", "categoryId": 1 }` |
+| PUT    | `/books/:id` | Update book details     | `{ "title": "Updated", "author": "Jane Doe", "description": "Updated description", "categoryId": 2 }`            |
+| DELETE | `/books/:id` | Delete a book by ID     | —                                                                                                                |
 
 **Example Response:**
 
@@ -148,9 +148,12 @@ npm start
   "id": 1,
   "title": "1984",
   "author": "George Orwell",
+  "description": "A dystopian novel",
+  "categoryId": 1,
   "category": {
     "id": 1,
-    "name": "Fiction"
+    "name": "Fiction",
+    "description": "Narrative works"
   }
 }
 ```
@@ -164,7 +167,7 @@ npm start
 | GET    | `/categories`     | Get all categories    | —                                                             |
 | GET    | `/categories/:id` | Get category by ID    | —                                                             |
 | POST   | `/categories`     | Create a new category | `{ "name": "Science", "description": "Books about physics" }` |
-| PUT    | `/categories/:id` | Update a category     | `{ "name": "Tech", "description": "Updated desc" }`           |
+| PUT    | `/categories/:id` | Update a category     | `{ "name": "Tech", "description": "Updated description" }`    |
 | DELETE | `/categories/:id` | Delete a category     | —                                                             |
 
 > Deleting a category will **not** delete related books; their `categoryId` becomes `NULL`.
