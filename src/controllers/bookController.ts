@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { books, categories } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 
 // -----------------------------
 // Types
@@ -45,19 +45,66 @@ const mapToBookWithCategory = (row: any): BookWithCategory => ({
 });
 
 // -----------------------------
-// Get all books
+// Get all books (with optional search)
 // -----------------------------
 export const getAllBooks = async (
-  _req: Request,
+  req: Request,
   res: Response<BookWithCategory[] | { error: string }>
 ): Promise<void> => {
   try {
-    const results = await db
-      .select()
-      .from(books)
-      .leftJoin(categories, eq(books.categoryId, categories.id));
+    const q = req.query.q?.toString()?.trim();
 
-    const mapped = results.map(mapToBookWithCategory);
+    let results;
+
+    if (q && q.length > 0) {
+      // Full-text search
+      results = await db.execute(sql`
+        SELECT 
+          b.*, 
+          c.id AS category_id,
+          c.name AS category_name,
+          c.description AS category_description
+        FROM books b
+        LEFT JOIN categories c ON b.category_id = c.id
+        WHERE to_tsvector('simple', coalesce(b.title, '') || ' ' || coalesce(b.author, '') || ' ' || coalesce(b.description, ''))
+        @@ plainto_tsquery('simple', ${q})
+        ORDER BY ts_rank_cd(
+          to_tsvector('simple', coalesce(b.title, '') || ' ' || coalesce(b.author, '') || ' ' || coalesce(b.description, '')),
+          plainto_tsquery('simple', ${q})
+        ) DESC;
+      `);
+    } else {
+      // Get all books without search
+      results = await db
+        .select()
+        .from(books)
+        .leftJoin(categories, eq(books.categoryId, categories.id));
+    }
+
+    // Normalize output
+    const mapped = Array.isArray(results)
+      ? results.map((row: any) => ({
+          id: row.id ?? row.books?.id,
+          title: row.title ?? row.books?.title,
+          author: row.author ?? row.books?.author,
+          description: row.description ?? row.books?.description,
+          categoryId: row.category_id ?? row.books?.categoryId,
+          category: row.category_name
+            ? {
+                id: row.category_id,
+                name: row.category_name,
+                description: row.category_description,
+              }
+            : row.categories
+            ? {
+                id: row.categories.id,
+                name: row.categories.name,
+                description: row.categories.description,
+              }
+            : null,
+        }))
+      : [];
+
     res.status(200).json(mapped);
   } catch (error) {
     console.error("Error fetching books:", error);
@@ -68,59 +115,75 @@ export const getAllBooks = async (
 // -----------------------------
 // Get single book by ID
 // -----------------------------
-export const getBookById = async (
-  req: Request<{ id: string }>,
-  res: Response<BookWithCategory | { error: string }>
-): Promise<void> => {
-  const { id } = req.params;
-
+export const getBookById = async (req: Request, res: Response) => {
   try {
-    const [result] = await db
-      .select()
+    const id = Number(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+    const [book] = await db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        description: books.description,
+        categoryId: books.categoryId,
+        category: {
+          id: categories.id,
+          name: categories.name,
+          description: categories.description,
+        },
+      })
       .from(books)
       .leftJoin(categories, eq(books.categoryId, categories.id))
-      .where(eq(books.id, Number(id)));
+      .where(eq(books.id, id));
 
-    if (!result) {
-      res.status(404).json({ error: "Book not found" });
-      return;
-    }
+    if (!book) return res.status(404).json({ error: "Book not found" });
 
-    res.json(mapToBookWithCategory(result));
+    res.status(200).json(book);
   } catch (error) {
-    console.error("Error fetching book:", error);
+    console.error("Error fetching book by ID:", error);
     res.status(500).json({ error: "Failed to fetch book" });
   }
 };
 
 // ----------------------------
-//  Create new book
+// Create new book
 // ----------------------------
 export const createBook = async (req: Request, res: Response) => {
   try {
     const { title, author, description, categoryId } = req.body;
 
-    if (!title || !author || !categoryId) {
-      return res.status(400).json({ error: "title, author, and categoryId are required" });
+    if (!title || !author) {
+      return res.status(400).json({ error: "title and author are required" });
     }
 
-    const [category] = await db
-      .select()
-      .from(categories)
-      .where(eq(categories.id, categoryId));
+    let validCategoryId: number | null = null;
 
-    if (!category) {
-      return res.status(404).json({ error: "Category not found" });
+    if (categoryId) {
+      const [category] = await db
+        .select()
+        .from(categories)
+        .where(eq(categories.id, categoryId));
+
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      validCategoryId = categoryId;
     }
 
     const [newBook] = await db
       .insert(books)
-      .values({ title, author, description, categoryId })
+      .values({ title, author, description, categoryId: validCategoryId })
       .returning();
 
-    const bookWithCategory = { ...newBook, category };
+    const [joined] = await db
+      .select()
+      .from(books)
+      .leftJoin(categories, eq(books.categoryId, categories.id))
+      .where(eq(books.id, newBook.id));
 
-    res.status(201).json(bookWithCategory);
+    res.status(201).json(mapToBookWithCategory(joined));
   } catch (error) {
     console.error("Error creating book:", error);
     res.status(500).json({ error: "Failed to create book" });
@@ -138,9 +201,35 @@ export const updateBook = async (
   const { title, author, description, categoryId } = req.body;
 
   try {
+    // Validate category existence if provided
+    let validCategoryId: number | null = null;
+
+    if (categoryId !== undefined) {
+      if (categoryId === null) {
+        validCategoryId = null;
+      } else {
+        const [category] = await db
+          .select()
+          .from(categories)
+          .where(eq(categories.id, categoryId));
+
+        if (!category) {
+          res.status(404).json({ error: "Category not found" });
+          return;
+        }
+
+        validCategoryId = categoryId;
+      }
+    }
+
     const [updated] = await db
       .update(books)
-      .set({ title, author, description, categoryId })
+      .set({
+        title,
+        author,
+        description,
+        categoryId: validCategoryId ?? categoryId,
+      })
       .where(eq(books.id, Number(id)))
       .returning();
 
@@ -149,7 +238,7 @@ export const updateBook = async (
       return;
     }
 
-    // Refetch with category
+    // Refetch with category for joined response
     const [joined] = await db
       .select()
       .from(books)
