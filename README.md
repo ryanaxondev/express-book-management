@@ -48,6 +48,12 @@ bookstore/
 │   └── db/
 │       ├── index.ts               # Drizzle + PostgreSQL connection
 │       └── schema.ts              # Database schema (Books + Categories)
+│
+│── docs/
+│   └── postman/
+│       ├── Bookstore_API_Pro_Collection.json   # Postman collection for all endpoints
+│       └── Bookstore_API_Environment.json      # Postman environment configuration
+│
 │── server.ts                      # Entry point
 │── package.json
 │── tsconfig.json
@@ -219,6 +225,27 @@ curl -X POST http://localhost:3000/categories \
   -H "Content-Type: application/json" \
   -d '{"name": "Fiction", "description": "Narrative works"}'
 ```
+
+---
+
+## 🧪 Testing the API with Postman
+
+You can easily test the Bookstore API using the provided Postman collection and environment files.
+
+### 🔧 Setup
+1. Import both files into **Postman**:
+   - `/docs/postman/Bookstore_API_Pro_Collection.json`
+   - `/docs/postman/Bookstore_API_Environment.json`
+2. Select the `Bookstore API` environment in Postman.
+3. Make sure your server is running at the correct `base_url` (default: `http://localhost:3000`).
+
+### 🚀 Usage
+Each endpoint includes ready-to-use examples with:
+- Dynamic variables such as `{{base_url}}` and `{{book_id}}`
+- Predefined request bodies and headers
+- Clear folder organization (Books, Categories)
+
+This setup helps frontend and QA teams quickly test and explore the API without needing to check the source code.
 
 ---
 

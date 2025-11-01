@@ -1,0 +1,163 @@
+{
+  "info": {
+    "name": "Bookstore API (Pro Version)",
+    "_postman_id": "b1234abcd-5678-ef90-ghij-klmnopqrstuv",
+    "description": "Professional Postman collection for Bookstore API \u2014 includes base_url variable, examples, and request descriptions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "book_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "category_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "\ud83d\udcd8 Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/books",
+            "description": "Fetch all books from the database."
+          }
+        },
+        {
+          "name": "Get Book by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/books/{{book_id}}",
+            "description": "Get details of a specific book by ID."
+          }
+        },
+        {
+          "name": "Create New Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Book A\",\n  \"author\": \"John Doe\",\n  \"categoryId\": 1\n}"
+            },
+            "url": "{{base_url}}/books",
+            "description": "Add a new book entry to the database."
+          }
+        },
+        {
+          "name": "Update Book",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"author\": \"Jane Doe\",\n  \"categoryId\": 2\n}"
+            },
+            "url": "{{base_url}}/books/{{book_id}}",
+            "description": "Update book details by ID."
+          }
+        },
+        {
+          "name": "Delete Book",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/books/{{book_id}}",
+            "description": "Delete a book record by ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "\ud83c\udff7\ufe0f Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/categories",
+            "description": "Fetch all book categories."
+          }
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/categories/{{category_id}}",
+            "description": "Get a specific category by ID."
+          }
+        },
+        {
+          "name": "Create New Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Science\",\n  \"description\": \"Books about physics\"\n}"
+            },
+            "url": "{{base_url}}/categories",
+            "description": "Create a new category."
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech\",\n  \"description\": \"Updated description\"\n}"
+            },
+            "url": "{{base_url}}/categories/{{category_id}}",
+            "description": "Update a category's name or description."
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/categories/{{category_id}}",
+            "description": "Delete a category by ID."
+          }
+        }
+      ]
+    }
+  ]
+}
