@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-11-02
+
+### Added
+- **Zod validation** for all `POST` and `PUT` requests (`books` & `categories`)
+- **Structured error responses** using `format()` for improved readability
+- **Full-text search** support in `GET /books` via query parameter `q`
+
+### Changed
+- Controllers refactored for **type safety** and **cleaner error handling**
+- Improved `categoryId` validation logic to prevent invalid foreign keys
+- Consistent `BookWithCategory` and `Category` response types across controllers
+- Updated README with validation and search documentation
+
+### Fixed
+- Prevented insert/update when `categoryId` refers to a non-existent category
+- Replaced deprecated `flatten()` with `format()` in Zod error formatting
+
+### Added files
+- `src/validation/bookSchema.ts` — defines Zod schema for book validation (`bookSchema`, `updateBookSchema`)
+- `src/validation/categorySchema.ts` — defines Zod schema for category validation (`categorySchema`, `updateCategorySchema`)
+
+### Commit Reference
+Ref: `git commit -m "Refactor book controllers with Zod validation and full-text search"`
+
+## [2.0.0]
+
 ### Added
 - Initial Express + TypeScript API with Drizzle ORM and Dockerized PostgreSQL (commit eeb61c3)
 - Environment setup with PostgreSQL variables in `.env.example` and secure Docker Compose config (commit 0f97fd4)

@@ -45,6 +45,9 @@ bookstore/
 │   ├── controllers/
 │   │   ├── bookController.ts      # Book logic (with category support)
 │   │   └── categoryController.ts  # Category CRUD logic
+│   ├── validation/
+│   │   ├── bookSchema.ts          # Zod schemas for book validation
+│   │   └── categorySchema.ts      # Zod schemas for category validation
 │   └── db/
 │       ├── index.ts               # Drizzle + PostgreSQL connection
 │       └── schema.ts              # Database schema (Books + Categories)
@@ -182,6 +185,36 @@ npm start
 * All book responses now return a **BookWithCategory** shape consistently (including category object when linked)
 * Update requests only apply `categoryId` changes when valid and support clearing it via `null`
 * Improved and explicit error messages for missing books or invalid categories
+
+---
+
+## 🧾 Validation & Error Handling (Zod)
+
+* All `POST` and `PUT` requests for **Books** and **Categories** are validated using **Zod schemas**.
+* Validation errors return structured, human-readable JSON responses:
+
+  ```json
+  {
+    "error": {
+      "title": "Required",
+      "author": "Must be a string"
+    }
+  }
+  ```
+* Prevents invalid `categoryId` references — non-existent IDs return `404: Category not found`.
+* Improves consistency and type-safety between backend and frontend.
+
+---
+
+## 🔍 Full-Text Search
+
+You can now search for books using a query parameter:
+
+```
+GET /books?q=habits
+```
+
+Searches both **title** and **author** fields using case-insensitive matching.
 
 ---
 
