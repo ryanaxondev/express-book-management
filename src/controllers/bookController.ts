@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db/index.js";
 import { books, categories } from "../db/schema.js";
 import { sql, eq } from "drizzle-orm";
+import { bookSchema, updateBookSchema } from "../validation/bookSchema.js";
 
 // -----------------------------
 // Types
@@ -45,19 +46,26 @@ const mapToBookWithCategory = (row: any): BookWithCategory => ({
 });
 
 // -----------------------------
-// Get all books (with optional search)
+// Get all books (with optional search) — Refactored
 // -----------------------------
 export const getAllBooks = async (
   req: Request,
-  res: Response<BookWithCategory[] | { error: string }>
+  res: Response
 ): Promise<void> => {
   try {
-    const q = req.query.q?.toString()?.trim();
+    const qParam = req.query.q;
+    const q = typeof qParam === "string" ? qParam.trim() : undefined;
 
-    let results;
+    // optional validation (for type-safety)
+    if (q && q.length > 100) {
+      res.status(400).json({ error: { message: "Query parameter too long" } });
+      return;
+    }
+
+    let results: any[];
 
     if (q && q.length > 0) {
-      // Full-text search
+      // Full-text search using PostgreSQL
       results = await db.execute(sql`
         SELECT 
           b.*, 
@@ -74,36 +82,32 @@ export const getAllBooks = async (
         ) DESC;
       `);
     } else {
-      // Get all books without search
       results = await db
         .select()
         .from(books)
         .leftJoin(categories, eq(books.categoryId, categories.id));
     }
 
-    // Normalize output
-    const mapped = Array.isArray(results)
-      ? results.map((row: any) => ({
-          id: row.id ?? row.books?.id,
-          title: row.title ?? row.books?.title,
-          author: row.author ?? row.books?.author,
-          description: row.description ?? row.books?.description,
-          categoryId: row.category_id ?? row.books?.categoryId,
-          category: row.category_name
-            ? {
-                id: row.category_id,
-                name: row.category_name,
-                description: row.category_description,
-              }
-            : row.categories
-            ? {
-                id: row.categories.id,
-                name: row.categories.name,
-                description: row.categories.description,
-              }
-            : null,
-        }))
-      : [];
+    const mapped: BookWithCategory[] = results.map((row: any) => ({
+      id: row.id ?? row.books?.id,
+      title: row.title ?? row.books?.title,
+      author: row.author ?? row.books?.author,
+      description: row.description ?? row.books?.description,
+      categoryId: row.category_id ?? row.books?.categoryId ?? null,
+      category: row.category_name
+        ? {
+            id: row.category_id,
+            name: row.category_name,
+            description: row.category_description,
+          }
+        : row.categories
+        ? {
+            id: row.categories.id,
+            name: row.categories.name,
+            description: row.categories.description,
+          }
+        : null,
+    }));
 
     res.status(200).json(mapped);
   } catch (error) {
@@ -147,18 +151,25 @@ export const getBookById = async (req: Request, res: Response) => {
 };
 
 // ----------------------------
-// Create new book
+// Create a new book
 // ----------------------------
-export const createBook = async (req: Request, res: Response) => {
+export const createBook = async (
+  req: Request,
+  res: Response<BookWithCategory | { error: Record<string, any> }>
+): Promise<void> => {
   try {
-    const { title, author, description, categoryId } = req.body;
-
-    if (!title || !author) {
-      return res.status(400).json({ error: "title and author are required" });
+    // Validate request body using Zod schema
+    const parsed = bookSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const formattedErrors = parsed.error.format();
+      res.status(400).json({ error: formattedErrors });
+      return;
     }
 
+    const { title, author, description, categoryId } = parsed.data;
     let validCategoryId: number | null = null;
 
+    // Check if the referenced category exists (if provided)
     if (categoryId) {
       const [category] = await db
         .select()
@@ -166,17 +177,20 @@ export const createBook = async (req: Request, res: Response) => {
         .where(eq(categories.id, categoryId));
 
       if (!category) {
-        return res.status(404).json({ error: "Category not found" });
+        res.status(404).json({ error: { message: "Category not found" } });
+        return;
       }
 
       validCategoryId = categoryId;
     }
 
+    // Insert the new book record
     const [newBook] = await db
       .insert(books)
       .values({ title, author, description, categoryId: validCategoryId })
       .returning();
 
+    // Fetch the inserted book along with its category for response
     const [joined] = await db
       .select()
       .from(books)
@@ -186,24 +200,32 @@ export const createBook = async (req: Request, res: Response) => {
     res.status(201).json(mapToBookWithCategory(joined));
   } catch (error) {
     console.error("Error creating book:", error);
-    res.status(500).json({ error: "Failed to create book" });
+    res.status(500).json({ error: { message: "Failed to create book" } });
   }
 };
 
 // -----------------------------
-// Update book
+// Update an existing book
 // -----------------------------
 export const updateBook = async (
   req: Request<{ id: string }, {}, Partial<BookInput>>,
-  res: Response<BookWithCategory | { error: string }>
+  res: Response<BookWithCategory | { error: Record<string, any> }>
 ): Promise<void> => {
   const { id } = req.params;
-  const { title, author, description, categoryId } = req.body;
 
   try {
-    // Validate category existence if provided
+    // Validate request body using Zod schema
+    const parsed = updateBookSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const formattedErrors = parsed.error.format();
+      res.status(400).json({ error: formattedErrors });
+      return;
+    }
+
+    const { title, author, description, categoryId } = parsed.data;
     let validCategoryId: number | null = null;
 
+    // Validate category reference if provided
     if (categoryId !== undefined) {
       if (categoryId === null) {
         validCategoryId = null;
@@ -214,7 +236,7 @@ export const updateBook = async (
           .where(eq(categories.id, categoryId));
 
         if (!category) {
-          res.status(404).json({ error: "Category not found" });
+          res.status(404).json({ error: { message: "Category not found" } });
           return;
         }
 
@@ -222,6 +244,7 @@ export const updateBook = async (
       }
     }
 
+    // Update the book record in the database
     const [updated] = await db
       .update(books)
       .set({
@@ -233,22 +256,24 @@ export const updateBook = async (
       .where(eq(books.id, Number(id)))
       .returning();
 
+    // Handle case when no matching book is found
     if (!updated) {
-      res.status(404).json({ error: "Book not found" });
+      res.status(404).json({ error: { message: "Book not found" } });
       return;
     }
 
-    // Refetch with category for joined response
+    // Fetch the updated book with its category for response consistency
     const [joined] = await db
       .select()
       .from(books)
       .leftJoin(categories, eq(books.categoryId, categories.id))
       .where(eq(books.id, updated.id));
 
+    // Return the updated record
     res.json(mapToBookWithCategory(joined));
   } catch (error) {
     console.error("Error updating book:", error);
-    res.status(500).json({ error: "Failed to update book" });
+    res.status(500).json({ error: { message: "Failed to update book" } });
   }
 };
 
@@ -257,31 +282,36 @@ export const updateBook = async (
 // -----------------------------
 export const deleteBook = async (
   req: Request<{ id: string }>,
-  res: Response<{ message: string; book: BookWithCategory } | { error: string }>
+  res: Response<{ message: string; book: BookWithCategory } | { error: { message: string } }>
 ): Promise<void> => {
-  const { id } = req.params;
-
   try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: { message: "Invalid book ID" } });
+      return;
+    }
+
     // Get book before deleting
     const [existing] = await db
       .select()
       .from(books)
       .leftJoin(categories, eq(books.categoryId, categories.id))
-      .where(eq(books.id, Number(id)));
+      .where(eq(books.id, id));
 
     if (!existing) {
-      res.status(404).json({ error: "Book not found" });
+      res.status(404).json({ error: { message: "Book not found" } });
       return;
     }
 
-    await db.delete(books).where(eq(books.id, Number(id)));
+    // Delete operation
+    await db.delete(books).where(eq(books.id, id));
 
-    res.json({
+    res.status(200).json({
       message: "Book deleted successfully",
       book: mapToBookWithCategory(existing),
     });
   } catch (error) {
     console.error("Error deleting book:", error);
-    res.status(500).json({ error: "Failed to delete book" });
+    res.status(500).json({ error: { message: "Failed to delete book" } });
   }
 };
