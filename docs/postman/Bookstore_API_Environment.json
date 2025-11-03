@@ -5,20 +5,20 @@
   "_postman_exported_at": "2025-11-01T00:00:00Z",
   "_postman_exported_using": "Postman v11",
   "values": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:3000",
-      "enabled": true
-    },
-    {
-      "key": "book_id",
-      "value": "1",
-      "enabled": true
-    },
-    {
-      "key": "category_id",
-      "value": "1",
-      "enabled": true
-    }
-  ]
+  {
+    "key": "base_url",
+    "value": "http://localhost:3000",
+    "enabled": true
+  },
+  {
+    "key": "book_id",
+    "value": "c1f3e2b7-1a32-4fcb-9352-9422a10b50f4",
+    "enabled": true
+  },
+  {
+    "key": "category_id",
+    "value": "d2a9b4f6-8e72-4fcb-92b7-1f1a2e3d4b5c",
+    "enabled": true
+  }
+]
 }

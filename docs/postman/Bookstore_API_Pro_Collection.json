@@ -2,7 +2,7 @@
   "info": {
     "name": "Bookstore API (Pro Version)",
     "_postman_id": "b1234abcd-5678-ef90-ghij-klmnopqrstuv",
-    "description": "Professional Postman collection for Bookstore API \u2014 includes base_url variable, examples, and request descriptions.",
+    "description": "Professional Postman collection for Bookstore API — includes base_url variable, examples, and request descriptions. Updated for UUID-based IDs.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,18 +13,18 @@
     },
     {
       "key": "book_id",
-      "value": "1",
+      "value": "c1f3e2b7-1a32-4fcb-9352-9422a10b50f4",
       "type": "string"
     },
     {
       "key": "category_id",
-      "value": "1",
+      "value": "d2a9b4f6-8e72-4fcb-92b7-1f1a2e3d4b5c",
       "type": "string"
     }
   ],
   "item": [
     {
-      "name": "\ud83d\udcd8 Books",
+      "name": "📘 Books",
       "item": [
         {
           "name": "Get All Books",
@@ -41,7 +41,7 @@
             "method": "GET",
             "header": [],
             "url": "{{base_url}}/books/{{book_id}}",
-            "description": "Get details of a specific book by ID."
+            "description": "Get details of a specific book by UUID."
           }
         },
         {
@@ -56,7 +56,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Book A\",\n  \"author\": \"John Doe\",\n  \"categoryId\": 1\n}"
+              "raw": "{\n  \"title\": \"Book A\",\n  \"author\": \"John Doe\",\n  \"categoryId\": \"d2a9b4f6-8e72-4fcb-92b7-1f1a2e3d4b5c\"\n}"
             },
             "url": "{{base_url}}/books",
             "description": "Add a new book entry to the database."
@@ -74,10 +74,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Updated Title\",\n  \"author\": \"Jane Doe\",\n  \"categoryId\": 2\n}"
+              "raw": "{\n  \"title\": \"Updated Title\",\n  \"author\": \"Jane Doe\",\n  \"categoryId\": \"d2a9b4f6-8e72-4fcb-92b7-1f1a2e3d4b5c\"\n}"
             },
             "url": "{{base_url}}/books/{{book_id}}",
-            "description": "Update book details by ID."
+            "description": "Update book details by UUID."
           }
         },
         {
@@ -86,13 +86,13 @@
             "method": "DELETE",
             "header": [],
             "url": "{{base_url}}/books/{{book_id}}",
-            "description": "Delete a book record by ID."
+            "description": "Delete a book record by UUID."
           }
         }
       ]
     },
     {
-      "name": "\ud83c\udff7\ufe0f Categories",
+      "name": "🏷️ Categories",
       "item": [
         {
           "name": "Get All Categories",
@@ -109,7 +109,7 @@
             "method": "GET",
             "header": [],
             "url": "{{base_url}}/categories/{{category_id}}",
-            "description": "Get a specific category by ID."
+            "description": "Get a specific category by UUID."
           }
         },
         {
@@ -154,7 +154,7 @@
             "method": "DELETE",
             "header": [],
             "url": "{{base_url}}/categories/{{category_id}}",
-            "description": "Delete a category by ID."
+            "description": "Delete a category by UUID."
           }
         }
       ]

@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { categories } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { categorySchema, updateCategorySchema } from "../validation/categorySchema.js";
+import { UUID } from "../types/bookTypes.js";
 
 // ----------------------------
 //  Get all categories
@@ -21,18 +22,14 @@ export const getAllCategories = async (
 };
 
 // ----------------------------
-//  Get single category by ID
+//  Get single category by ID (UUID-based)
 // ----------------------------
 export const getCategoryById = async (
-  req: Request<{ id: string }>,
+  req: Request<{ id: UUID }>,
   res: Response<any | { error: Record<string, any> }>
 ): Promise<void> => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: { message: "Invalid ID" } });
-      return;
-    }
+    const { id } = req.params;
 
     const [category] = await db
       .select()
@@ -52,7 +49,7 @@ export const getCategoryById = async (
 };
 
 // ----------------------------
-//  Create new category
+//  Create new category (UUID-based)
 // ----------------------------
 export const createCategory = async (
   req: Request,
@@ -61,8 +58,7 @@ export const createCategory = async (
   try {
     const parsed = categorySchema.safeParse(req.body);
     if (!parsed.success) {
-      const formattedErrors = parsed.error.format();
-      res.status(400).json({ error: formattedErrors });
+      res.status(400).json({ error: parsed.error.format() });
       return;
     }
 
@@ -84,20 +80,15 @@ export const createCategory = async (
 //  Update category
 // ----------------------------
 export const updateCategory = async (
-  req: Request<{ id: string }>,
+  req: Request<{ id: UUID }>,
   res: Response<any | { error: Record<string, any> }>
 ): Promise<void> => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: { message: "Invalid ID" } });
-      return;
-    }
+    const { id } = req.params;
 
     const parsed = updateCategorySchema.safeParse(req.body);
     if (!parsed.success) {
-      const formattedErrors = parsed.error.format();
-      res.status(400).json({ error: formattedErrors });
+      res.status(400).json({ error: parsed.error.format() });
       return;
     }
 
@@ -125,15 +116,11 @@ export const updateCategory = async (
 //  Delete category
 // ----------------------------
 export const deleteCategory = async (
-  req: Request<{ id: string }>,
+  req: Request<{ id: UUID }>,
   res: Response<{ message: string } | { error: Record<string, any> }>
 ): Promise<void> => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: { message: "Invalid ID" } });
-      return;
-    }
+    const { id } = req.params;
 
     const [deleted] = await db
       .delete(categories)

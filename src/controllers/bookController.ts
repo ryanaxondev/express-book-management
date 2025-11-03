@@ -3,50 +3,11 @@ import { db } from "../db/index.js";
 import { books, categories } from "../db/schema.js";
 import { sql, eq } from "drizzle-orm";
 import { bookSchema, updateBookSchema } from "../validation/bookSchema.js";
+import { mapToBookWithCategory } from "../utils/mapToBookWithCategory.js";
+import { UUID, BookInput, BookWithCategory } from "../types/bookTypes.js";
 
 // -----------------------------
-// Types
-// -----------------------------
-export interface BookInput {
-  title: string;
-  author: string;
-  description?: string;
-  categoryId?: number | null;
-}
-
-export interface BookWithCategory {
-  id: number;
-  title: string;
-  author: string;
-  description: string | null;
-  categoryId: number | null;
-  category?: {
-    id: number;
-    name: string;
-    description?: string | null;
-  } | null;
-}
-
-// -----------------------------
-// Mapper Utility
-// -----------------------------
-const mapToBookWithCategory = (row: any): BookWithCategory => ({
-  id: row.books.id,
-  title: row.books.title,
-  author: row.books.author,
-  description: row.books.description,
-  categoryId: row.books.categoryId,
-  category: row.categories
-    ? {
-        id: row.categories.id,
-        name: row.categories.name,
-        description: row.categories.description,
-      }
-    : null,
-});
-
-// -----------------------------
-// Get all books (with optional search) — Refactored
+// Get all books (with optional search)
 // -----------------------------
 export const getAllBooks = async (
   req: Request,
@@ -56,7 +17,7 @@ export const getAllBooks = async (
     const qParam = req.query.q;
     const q = typeof qParam === "string" ? qParam.trim() : undefined;
 
-    // optional validation (for type-safety)
+    // Optional validation for search query
     if (q && q.length > 100) {
       res.status(400).json({ error: { message: "Query parameter too long" } });
       return;
@@ -88,6 +49,7 @@ export const getAllBooks = async (
         .leftJoin(categories, eq(books.categoryId, categories.id));
     }
 
+    // Map result rows to unified BookWithCategory objects
     const mapped: BookWithCategory[] = results.map((row: any) => ({
       id: row.id ?? row.books?.id,
       title: row.title ?? row.books?.title,
@@ -117,12 +79,17 @@ export const getAllBooks = async (
 };
 
 // -----------------------------
-// Get single book by ID
+// Get single book by ID (UUID-based)
 // -----------------------------
-export const getBookById = async (req: Request, res: Response) => {
+export const getBookById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+    const { id } = req.params;
+
+    // Simple validation: ensure it's a valid UUID format
+    if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
+      res.status(400).json({ error: "Invalid UUID format" });
+      return;
+    }
 
     const [book] = await db
       .select({
@@ -141,7 +108,10 @@ export const getBookById = async (req: Request, res: Response) => {
       .leftJoin(categories, eq(books.categoryId, categories.id))
       .where(eq(books.id, id));
 
-    if (!book) return res.status(404).json({ error: "Book not found" });
+    if (!book) {
+      res.status(404).json({ error: "Book not found" });
+      return;
+    }
 
     res.status(200).json(book);
   } catch (error) {
@@ -151,7 +121,7 @@ export const getBookById = async (req: Request, res: Response) => {
 };
 
 // ----------------------------
-// Create a new book
+// Create a new book (UUID-based)
 // ----------------------------
 export const createBook = async (
   req: Request,
@@ -167,7 +137,7 @@ export const createBook = async (
     }
 
     const { title, author, description, categoryId } = parsed.data;
-    let validCategoryId: number | null = null;
+    let validCategoryId: string | null = null;
 
     // Check if the referenced category exists (if provided)
     if (categoryId) {
@@ -208,24 +178,21 @@ export const createBook = async (
 // Update an existing book
 // -----------------------------
 export const updateBook = async (
-  req: Request<{ id: string }, {}, Partial<BookInput>>,
+  req: Request<{ id: UUID }, {}, Partial<BookInput>>,
   res: Response<BookWithCategory | { error: Record<string, any> }>
 ): Promise<void> => {
   const { id } = req.params;
 
   try {
-    // Validate request body using Zod schema
     const parsed = updateBookSchema.safeParse(req.body);
     if (!parsed.success) {
-      const formattedErrors = parsed.error.format();
-      res.status(400).json({ error: formattedErrors });
+      res.status(400).json({ error: parsed.error.format() });
       return;
     }
 
     const { title, author, description, categoryId } = parsed.data;
-    let validCategoryId: number | null = null;
+    let validCategoryId: UUID | null = null;
 
-    // Validate category reference if provided
     if (categoryId !== undefined) {
       if (categoryId === null) {
         validCategoryId = null;
@@ -240,11 +207,10 @@ export const updateBook = async (
           return;
         }
 
-        validCategoryId = categoryId;
+        validCategoryId = categoryId as UUID;
       }
     }
 
-    // Update the book record in the database
     const [updated] = await db
       .update(books)
       .set({
@@ -253,23 +219,20 @@ export const updateBook = async (
         description,
         categoryId: validCategoryId ?? categoryId,
       })
-      .where(eq(books.id, Number(id)))
+      .where(eq(books.id, id))
       .returning();
 
-    // Handle case when no matching book is found
     if (!updated) {
       res.status(404).json({ error: { message: "Book not found" } });
       return;
     }
 
-    // Fetch the updated book with its category for response consistency
     const [joined] = await db
       .select()
       .from(books)
       .leftJoin(categories, eq(books.categoryId, categories.id))
       .where(eq(books.id, updated.id));
 
-    // Return the updated record
     res.json(mapToBookWithCategory(joined));
   } catch (error) {
     console.error("Error updating book:", error);
@@ -281,17 +244,12 @@ export const updateBook = async (
 // Delete book
 // -----------------------------
 export const deleteBook = async (
-  req: Request<{ id: string }>,
+  req: Request<{ id: UUID }>,
   res: Response<{ message: string; book: BookWithCategory } | { error: { message: string } }>
 ): Promise<void> => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: { message: "Invalid book ID" } });
-      return;
-    }
+    const { id } = req.params;
 
-    // Get book before deleting
     const [existing] = await db
       .select()
       .from(books)
@@ -303,7 +261,6 @@ export const deleteBook = async (
       return;
     }
 
-    // Delete operation
     await db.delete(books).where(eq(books.id, id));
 
     res.status(200).json({

@@ -1,54 +1,62 @@
 import {
-  pgTable,
-  serial,
-  text,
+  pgTableCreator,
+  uuid,
   varchar,
-  integer,
+  text,
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { InferSelectModel, InferInsertModel } from "drizzle-orm";
 
-// -------------------------
-//  Categories Table
-// -------------------------
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
+/**
+ * Create table helper.
+ * Using pgTableCreator with a simple name mapper to keep API stable
+ * and avoid deprecated overloads.
+ */
+export const createTable = pgTableCreator((name) => name);
+
+/**
+ * Categories table definition
+ */
+export const categories = createTable("categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
 });
 
-// -------------------------
-// Books Table
-// -------------------------
-export const books = pgTable(
+/**
+ * Books table definition
+ *
+ * Note: the third parameter returns an array of index definitions (not an object).
+ * This avoids the deprecated object overload.
+ */
+export const books = createTable(
   "books",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").defaultRandom().primaryKey(),
     title: varchar("title", { length: 255 }).notNull(),
     author: text("author").notNull(),
     description: text("description"),
-    categoryId: integer("category_id").references(() => categories.id, {
+    categoryId: uuid("category_id").references(() => categories.id, {
       onDelete: "set null",
     }),
   },
-  (table) => ({
-    // Basic B-tree indexes for quick lookups
-    titleIdx: index("idx_books_title").on(table.title),
-    authorIdx: index("idx_books_author").on(table.author),
+  (table) => [
+    // basic b-tree indexes
+    index("idx_books_title").on(table.title),
+    index("idx_books_author").on(table.author),
 
-    // Full-text index (optional, for PostgreSQL)
-    // You can enable this later using pg_trgm or tsvector
-    fullTextIdx: index("idx_books_fulltext").using(
+    // full-text GIN index using a tsvector expression
+    index("idx_books_fulltext").using(
       "gin",
       sql`to_tsvector('english', ${table.title} || ' ' || ${table.author} || ' ' || coalesce(${table.description}, ''))`
     ),
-  })
+  ]
 );
 
-// -------------------------
-//  Type Inference Helpers
-// -------------------------
+/**
+ * Type helpers
+ */
 export type Book = InferSelectModel<typeof books>;
 export type NewBook = InferInsertModel<typeof books>;
 
