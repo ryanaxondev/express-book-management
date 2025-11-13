@@ -6,6 +6,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2025-11-13
+
+### Added
+
+* Introduced **UUID-based identifiers** for all entities (`books` & `categories`)
+* Added `UUID` type definition in `src/types/bookTypes.ts` for strong type safety
+* Created new utility: `src/utils/mapToBookWithCategory.ts` — maps joined book-category rows to unified response model
+* Updated Postman collection and environment with UUID variables
+* Added new section in README detailing UUID migration and structure
+
+### Changed
+
+* Replaced all integer `id` and `categoryId` fields with **UUIDs**
+* Updated controllers (`bookController.ts`, `categoryController.ts`) to use UUID route parameters
+* Modified `bookSchema` and `categorySchema` with `uuidSchema` validation
+* Updated `routes/books.ts` and `routes/categoryRoutes.ts` to expect UUIDs in URL params
+* Updated database and Drizzle models to align with UUID usage
+* Updated tests and Postman requests to use UUIDs instead of numeric IDs
+
+### Fixed
+
+* Resolved type inconsistencies between `BookWithCategory` and joined Drizzle responses
+* Prevented invalid UUID parsing in request validation layer
+
+### Added files
+
+* `src/utils/mapToBookWithCategory.ts` — maps database join results to `BookWithCategory` structure
+
+### Commit Reference
+
+Ref:
+`git commit -m "Migrate IDs to UUID
+
+* Introduced UUID type in bookTypes.ts
+* Updated schemas, controllers, and routes
+* Added mapToBookWithCategory util
+* Updated Postman and tests"`
+
 ## [2.1.0] - 2025-11-02
 
 ### Added
